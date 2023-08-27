@@ -112,16 +112,37 @@ async def clean_known_users():
     log.info("Cleaning deleted users...")
     guild = (await bot.fetch_channel(VERIFY_CHANNEL)).guild
     verified = guild.get_role(VERIFIED_ROLE)
+    members = await guild.fetch_members(limit=150).flatten()
     remove = []
+
     for jellyfin_user, discord_user in KNOWN_USERS.items():
+
+        # Check user removed from jellyfin
         if jellyfin_user not in JELLYFIN_USERS:
-            log.info(f"Removing user {jellyfin_user!r}...")
-            try:
-                member = await guild.fetch_member(discord_user)
-                await member.remove_roles(verified)
-            except Exception:
-                log.warn(f"Can't unverify discord user {discord_user}, removing from known users regardless...")
+            log.info(f"Cleaning removed jellyfin user {jellyfin_user!r}...")
+            for member in members:
+                if member.id == discord_user:
+                    try:
+                        await member.remove_roles(verified)
+                    except Exception:
+                        log.warn(f"Can't unverify discord user {discord_user}, removing from known users regardless...")
+                    break
+            else:  # No break
+                log.info(f"Discord user {discord_user} left the server...")
             remove.append(jellyfin_user)
+            continue
+
+        # Check user removed from discord
+        for member in members:
+            if member.id == discord_user:
+                if verified not in member.roles:
+                    log.info(f"Cleaning unverified discord user {discord_user}...")
+                    remove.append(jellyfin_user)
+                break
+        else:  # No break
+            log.info(f"Cleaning removed discord user {discord_user}...")
+            remove.append(jellyfin_user)
+
     if remove:
         for user in remove:
             del KNOWN_USERS[user]
