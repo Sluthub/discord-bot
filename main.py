@@ -111,7 +111,11 @@ async def fetch_jellyfin_users():
 async def clean_known_users():
     log.info("Cleaning deleted users...")
     guild = (await bot.fetch_channel(VERIFY_CHANNEL)).guild
-    verified = guild.get_role(VERIFIED_ROLE)
+    for role in await guild.fetch_roles():
+        if role.id == VERIFIED_ROLE:
+            verified = role
+            break
+    assert verified
     members = await guild.fetch_members(limit=150).flatten()
     remove = []
 
