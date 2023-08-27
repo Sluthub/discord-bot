@@ -81,6 +81,7 @@ save_known_users = lambda: KNOWN_USERS_FILE.write_text(json.dumps(KNOWN_USERS))
 # Bot
 intents = nextcord.Intents().default()
 intents.message_content = True
+intents.members = True
 bot = commands.Bot(intents=intents)
 
 
