@@ -192,7 +192,7 @@ async def housekeeping():
     for channel_id, category, name in (
         (MOVIES_CHANNEL, MOVIES_CATEGORY, "Movies",),
         (ANIME_CHANNEL, ANIME_CATEGORY, "Anime",),
-        (TV_CHANNEL, TV_CATEGORY, "TV",),
+        (TV_CHANNEL, TV_CATEGORY, "Shows",),
     ):
         channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
         items = await get_latest_items(category, 0)
