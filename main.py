@@ -232,7 +232,7 @@ async def on_message(message: nextcord.Message):
 
 @bot.slash_command()
 async def gib_ip(interaction: nextcord.Interaction):
-    await interaction.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
     if not interaction.user.get_role(ADMIN_ROLE):
         await interaction.send("https://yourmom.zip", ephemeral=True)
         return
