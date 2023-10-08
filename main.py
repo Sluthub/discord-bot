@@ -6,6 +6,7 @@ import logging
 import aiohttp
 import shutil
 import json
+import time
 
 # Config options
 LIBRARY_PATH: str
@@ -177,13 +178,16 @@ async def housekeeping():
     await clean_known_users()
 
     log.info("Updating channels and presence...")
-    await bot.change_presence(
-        activity=nextcord.Activity(
-            type=nextcord.ActivityType.watching,
-            name=(await get_latest_items(MOVIES_CATEGORY, 1))["Items"][0]["Name"]
-        ),
-        status=nextcord.Status.do_not_disturb,
-    )
+    try:
+        await bot.change_presence(
+            activity=nextcord.Activity(
+                type=nextcord.ActivityType.watching,
+                name=(await get_latest_items(MOVIES_CATEGORY, 1))["Items"][0]["Name"]
+            ),
+            status=nextcord.Status.do_not_disturb,
+        )
+    except Exception as exc:
+        log.warn(f"Failed to update presence: {exc}")
 
     channel = bot.get_channel(DISK_CHANNEL) or await bot.fetch_channel(DISK_CHANNEL)
     d = shutil.disk_usage(LIBRARY_PATH)
@@ -195,9 +199,12 @@ async def housekeeping():
         (ANIME_CHANNEL, ANIME_CATEGORY, "Anime",),
         (TV_CHANNEL, TV_CATEGORY, "Shows",),
     ):
-        channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
-        items = await get_latest_items(category, 0)
-        await channel.edit(name=f"{name}: {items['TotalRecordCount']}")
+        try:
+            channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+            items = await get_latest_items(category, 0)
+            await channel.edit(name=f"{name}: {items['TotalRecordCount']}")
+        except Exception as exc:
+            log.warn(f"Failed to update channel {name}: {exc}")
     log.info("Updated channels and presence!")
 
 
@@ -243,6 +250,13 @@ async def gib_ip(interaction: nextcord.Interaction):
 
 
 if __name__ == "__main__":
-    asyncio.run(fetch_jellyfin_users())
+    while True:
+        try:
+            asyncio.run(fetch_jellyfin_users())
+            break
+        except Exception as exc:
+            log.warn(f"Failed to fetch users: {exc}")
+            log.warn(f"Sleeping 15 seconds")
+            time.sleep(15)
     housekeeping.first_run = True
     bot.run(DISCORD_TOKEN)
