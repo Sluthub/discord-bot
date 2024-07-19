@@ -1,4 +1,5 @@
 from nextcord.ext import commands, tasks
+import traceback
 import nextcord
 import asyncio
 import pathlib
@@ -19,13 +20,15 @@ JELLYFIN_APIKEY: str
 JELLYFIN_USERID: str
 DISCORD_TOKEN: str
 
-DISK_CHANNEL: int
 MOVIES_CATEGORY: str
 ANIME_CATEGORY: str
 TV_CATEGORY: str
+
+DISK_CHANNEL: int
 MOVIES_CHANNEL: int
 ANIME_CHANNEL: int
 TV_CHANNEL: int
+MUSIC_CHANNEL: int
 
 env = pathlib.Path(".env.py")
 if env.exists():
@@ -167,7 +170,6 @@ async def get_latest_items(category: str, limit: int) -> dict[str]:
     })
     return res
 
-
 @tasks.loop(minutes=5.0)
 async def housekeeping():
     if housekeeping.first_run:
@@ -186,16 +188,16 @@ async def housekeeping():
             ),
             status=nextcord.Status.do_not_disturb,
         )
-    except Exception as exc:
-        log.warn(f"Failed to update presence: {exc}")
+    except Exception as e:
+        log.warn(f"Failed to update presence: {e}")
 
     channel = bot.get_channel(DISK_CHANNEL) or await bot.fetch_channel(DISK_CHANNEL)
     d = shutil.disk_usage(LIBRARY_PATH)
     t = 1_000_000_000_000
-    await channel.edit(name=f"Data: {d.used / t:.1f}TB / {d.total / t:.0f}TB | ~{d.used / d.total:.0%}")
+    await channel.edit(name=f"Data: {d.used / t:.1f}TB") #/ {d.total / t:.0f}TB | ~{d.used / d.total:.0%}")
 
+    # Legacy only for anime and shows bc jellyfin gay
     for channel_id, category, name in (
-        (MOVIES_CHANNEL, MOVIES_CATEGORY, "Movies",),
         (ANIME_CHANNEL, ANIME_CATEGORY, "Anime",),
         (TV_CHANNEL, TV_CATEGORY, "Shows",),
     ):
@@ -203,9 +205,25 @@ async def housekeeping():
             channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
             items = await get_latest_items(category, 0)
             await channel.edit(name=f"{name}: {items['TotalRecordCount']}")
-        except Exception as exc:
-            log.warn(f"Failed to update channel {name}: {exc}")
+        except Exception as e:
+            log.warn(f"Failed to update channel {name}: {e}")
+
+    # Cleaner way to handle it | Code needs huge rewrite now technically... yay. will do somewhenTM
+    items = await jellyfin_api("GET", f"/emby/Items/Counts")
+    for channel_id, category, name in (
+        (MOVIES_CHANNEL, "MovieCount", "Movies",),
+        (MUSIC_CHANNEL, "SongCount", "Songs",),
+    ):
+        try:
+            channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+            await channel.edit(name=f"{name}: " + str(items[f"{category}"]))
+        except Exception as e:
+            log.warn(f"Failed to update channel {name}: {e}")
+            log.critical(traceback.format_exc())
+        
+
     log.info("Updated channels and presence!")
+
 
 
 @bot.event
