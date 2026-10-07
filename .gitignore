@@ -1,3 +1,5 @@
 /venv/
 known_users.json
 .env.py
+__pycache__/
+*.pyc

@@ -33,7 +33,7 @@ jobs:
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
       with:
         script: "const policy = {\"repository\":\"Sluthub/discord-bot\",\"branch\":\"main\",\"dependencyFiles\"\
-          :[\"requirements.txt\"],\"requiredWorkflows\":[],\"mergeMethod\":\"merge\"};\n// Embedded in a default-branch\
+          :[\"requirements.in\",\"requirements.txt\"],\"requiredWorkflows\":[\"Sluthub bot CI\"],\"mergeMethod\":\"merge\"};\n// Embedded in a default-branch\
           \ workflow. Never check out or execute PR code here.\nfunction compatibleVersion(before, after) {\n  const\
           \ parse = value => /^v?(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(value)?.slice(1).map(Number);\n  const old = parse(before),\
           \ next = parse(after);\n  if (!old || !next || old[0] !== next[0]) return false;\n  if (old[0] === 0 &&\
