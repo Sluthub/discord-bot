@@ -100,6 +100,7 @@ async def jellyfin_api(method: str, endpoint: str, **kwargs):
             headers=headers,
             **kwargs
         ) as req:
+            req.raise_for_status()
             res = await req.json()
     return res
 

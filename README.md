@@ -1,3 +1,19 @@
+## Runtime
+
+Use Python 3.13. Install the locked dependencies into `venv` before starting the
+bot; `start.sh` does not change dependencies during startup. Keep `.env.py` and
+`known_users.json` in the bot directory and out of Git.
+
+```sh
+python3.13 -m venv venv
+venv/bin/python -m pip install --require-hashes -r requirements.txt
+./start.sh
+```
+
+Run offline checks with `venv/bin/python -m unittest discover -s tests`.
+Regenerate `requirements.txt` from `requirements.in` with
+`uv pip compile --python-version 3.13 --universal --generate-hashes`.
+
 ## ❤️ Support me
 
 <!--
