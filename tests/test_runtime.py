@@ -69,6 +69,52 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
                 await self.app.jellyfin_api("GET", "/Users")
         response.json.assert_not_awaited()
 
+    async def test_housekeeping_consumes_native_member_iterator(self):
+        role = Mock(id=91)
+        retained = Mock(id=101, roles=[role])
+        deleted = Mock(id=102, roles=[role], remove_roles=AsyncMock())
+        unverified = Mock(id=103, roles=[])
+        guild = Mock(fetch_roles=AsyncMock(return_value=[role]))
+
+        async def members(*, limit):
+            self.assertEqual(limit, 150)
+            for member in (retained, deleted, unverified):
+                yield member
+
+        guild.fetch_members = Mock(side_effect=members)
+        self.app.JELLYFIN_USERS = ["retained", "unverified"]
+        self.app.KNOWN_USERS = {"retained": 101, "deleted": 102,
+                                "unverified": 103, "left": 104}
+        with patch.object(self.app, "VERIFY_CHANNEL", 90, create=True), \
+             patch.object(self.app, "VERIFIED_ROLE", 91, create=True), \
+             patch.object(self.app.bot, "fetch_channel", AsyncMock(return_value=Mock(guild=guild))), \
+             patch.object(self.app, "save_known_users") as save:
+            await self.app.clean_known_users()
+        self.assertEqual(self.app.KNOWN_USERS, {"retained": 101})
+        deleted.remove_roles.assert_awaited_once_with(role)
+        save.assert_called_once_with()
+
+    async def test_member_fetch_failure_preserves_known_users(self):
+        role = Mock(id=91)
+        guild = Mock(fetch_roles=AsyncMock(return_value=[role]))
+
+        async def members(*, limit):
+            yield Mock(id=101, roles=[role])
+            raise RuntimeError("synthetic member fetch failure")
+
+        guild.fetch_members = Mock(side_effect=members)
+        original = {"retained": 101, "unseen": 102}
+        self.app.JELLYFIN_USERS = ["retained", "unseen"]
+        self.app.KNOWN_USERS = original.copy()
+        with patch.object(self.app, "VERIFY_CHANNEL", 90, create=True), \
+             patch.object(self.app, "VERIFIED_ROLE", 91, create=True), \
+             patch.object(self.app.bot, "fetch_channel", AsyncMock(return_value=Mock(guild=guild))), \
+             patch.object(self.app, "save_known_users") as save:
+            with self.assertRaisesRegex(RuntimeError, "synthetic member fetch failure"):
+                await self.app.clean_known_users()
+        self.assertEqual(self.app.KNOWN_USERS, original)
+        save.assert_not_called()
+
     async def test_user_refresh_keeps_existing_mapping(self):
         self.app.KNOWN_USERS = {"fixture": 123}
         with patch.object(self.app, "jellyfin_api", AsyncMock(return_value=[{"Name": "fixture"}])):

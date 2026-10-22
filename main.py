@@ -122,7 +122,7 @@ async def clean_known_users():
             verified = role
             break
     assert verified
-    members = await guild.fetch_members(limit=150).flatten()
+    members = [member async for member in guild.fetch_members(limit=150)]
     remove = []
 
     for jellyfin_user, discord_user in KNOWN_USERS.items():
